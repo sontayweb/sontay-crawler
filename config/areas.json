@@ -1,0 +1,7 @@
+[
+  { "id": "son-tay", "label": "Son Tay", "priority": 1 },
+  { "id": "ba-vi", "label": "Ba Vi", "priority": 2 },
+  { "id": "phuc-tho", "label": "Phuc Tho", "priority": 3 },
+  { "id": "thach-that", "label": "Thach That", "priority": 3 },
+  { "id": "quoc-oai", "label": "Quoc Oai", "priority": 4 }
+]

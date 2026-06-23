@@ -1,0 +1,25 @@
+# Node dependencies
+node_modules/
+
+# Compiled output
+dist/
+
+# Environment variables (Critical to protect API keys)
+.env
+.env.*
+
+# Scraped Data, Databases & Logs
+# (Prevents uploading private customer info/large files to Git)
+data/
+*.log
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

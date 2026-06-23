@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "name": "public-directory",
+      "enabled": true,
+      "seeds": [
+        "https://trangvangvietnam.com/categories/spa.html"
+      ],
+      "selectors": {
+        "item": ".box_listing",
+        "name": ".title_listing",
+        "phone": ".phone_listing",
+        "address": ".address_listing",
+        "website": ".website_listing"
+      }
+    },
+    {
+      "name": "google-places-api",
+      "enabled": true
+    }
+  ]
+}

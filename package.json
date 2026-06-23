@@ -1,0 +1,29 @@
+{
+  "name": "sontay-crawler",
+  "version": "1.0.0",
+  "description": "Son Tay Business Lead Scraper",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "scrape": "tsx src/cli.ts scrape",
+    "score": "tsx src/cli.ts score",
+    "restore": "tsx src/restore.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "crawlee": "^3.11.3",
+    "playwright": "^1.49.0",
+    "zod": "^3.23.8",
+    "commander": "^12.1.0",
+    "csv-stringify": "^6.5.1",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.2",
+    "tsx": "^4.16.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.14.9"
+  }
+}

@@ -1,0 +1,9 @@
+[
+  { "id": "spa", "label": "Spa", "queries": ["spa son tay", "tham my vien son tay", "massage son tay"], "template": "spa" },
+  { "id": "salon", "label": "Salon toc", "queries": ["salon toc son tay", "cat toc son tay"], "template": "spa" },
+  { "id": "cafe", "label": "Cafe", "queries": ["cafe son tay", "quan cafe son tay"], "template": "restaurant" },
+  { "id": "restaurant", "label": "Nha hang/quan an", "queries": ["nha hang son tay", "quan an son tay"], "template": "restaurant" },
+  { "id": "garage", "label": "Gara/sua xe", "queries": ["gara oto son tay", "sua xe may son tay"], "template": "repair" },
+  { "id": "clinic", "label": "Phong kham/nha khoa", "queries": ["nha khoa son tay", "phong kham son tay"], "template": "clinic" },
+  { "id": "homestay", "label": "Homestay/nha nghi", "queries": ["homestay son tay", "nha nghi son tay"], "template": "hotel" }
+]

@@ -1,0 +1,128 @@
+{
+  "usableSessionsCount": 2,
+  "retiredSessionsCount": 0,
+  "sessions": [
+    {
+      "id": "session_YpsZEbsgzw",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-06-23T18:51:15.744Z",
+      "createdAt": "2026-06-23T18:01:15.744Z",
+      "usageCount": 0,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    },
+    {
+      "id": "session_2xM5YtmFFd",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": [
+          {
+            "key": "ASPSESSIONIDCWDBQSDD",
+            "value": "JCCGNPCBDKHNECJEMDHEJONF",
+            "expires": "2026-06-23T18:51:17.192Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "secure": true,
+            "hostOnly": true,
+            "creation": "2026-06-23T18:01:17.194Z",
+            "lastAccessed": "2026-06-23T18:01:17.194Z"
+          },
+          {
+            "key": "__utma",
+            "value": "265456458.1114315445.1782237677.1782237677.1782237677.1",
+            "expires": "2027-07-28T18:01:17.046Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.194Z",
+            "lastAccessed": "2026-06-23T18:01:17.194Z"
+          },
+          {
+            "key": "__utmc",
+            "value": "265456458",
+            "expires": "2026-06-23T18:51:17.192Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.194Z",
+            "lastAccessed": "2026-06-23T18:01:17.194Z"
+          },
+          {
+            "key": "__utmz",
+            "value": "265456458.1782237677.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)",
+            "expires": "2026-12-23T06:01:17.000Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.195Z",
+            "lastAccessed": "2026-06-23T18:01:17.195Z"
+          },
+          {
+            "key": "__utmt",
+            "value": "1",
+            "expires": "2026-06-23T18:11:17.000Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.195Z",
+            "lastAccessed": "2026-06-23T18:01:17.195Z"
+          },
+          {
+            "key": "__utmb",
+            "value": "265456458.1.10.1782237677",
+            "expires": "2026-06-23T18:31:17.000Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.195Z",
+            "lastAccessed": "2026-06-23T18:01:17.195Z"
+          },
+          {
+            "key": "_ga_7EZY8PMLM0",
+            "value": "GS2.1.s1782237677$o1$g0$t1782237677$j60$l0$h0",
+            "expires": "2027-07-28T18:01:17.172Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.195Z",
+            "lastAccessed": "2026-06-23T18:01:17.195Z"
+          },
+          {
+            "key": "_ga",
+            "value": "GA1.1.47557635.1782237677",
+            "expires": "2027-07-28T18:01:17.173Z",
+            "domain": "trangvangvietnam.com",
+            "path": "/",
+            "hostOnly": false,
+            "creation": "2026-06-23T18:01:17.195Z",
+            "lastAccessed": "2026-06-23T18:01:17.195Z"
+          }
+        ]
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-06-23T18:51:15.748Z",
+      "createdAt": "2026-06-23T18:01:15.748Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 0
+    }
+  ]
+}

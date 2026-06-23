@@ -190,7 +190,8 @@ export class FacebookCdpSource implements LeadSourceAdapter {
     // 2. Determine keywords to search
     const queryArg = input.query || "all";
     let searchKeywords: string[] = [];
-    if (queryArg.toLowerCase() === "all" || queryArg.endsWith(".csv") || queryArg.endsWith(".json")) {
+    
+    const queryArgFallback = () => {
       searchKeywords = [
         "spa", 
         "salon toc", 
@@ -206,6 +207,48 @@ export class FacebookCdpSource implements LeadSourceAdapter {
         "tiem vang", 
         "nha thuoc"
       ];
+    };
+
+    if (queryArg.toLowerCase() === "all") {
+      queryArgFallback();
+    } else if (queryArg.toLowerCase().endsWith(".json")) {
+      try {
+        const resolvedPath = path.resolve(queryArg);
+        if (fs.existsSync(resolvedPath)) {
+          const fileData = fs.readFileSync(resolvedPath, "utf-8");
+          const parsed = JSON.parse(fileData);
+          if (Array.isArray(parsed)) {
+            searchKeywords = parsed.map(k => String(k).trim()).filter(Boolean);
+            logger.info(`Loaded ${searchKeywords.length} keywords from JSON file: ${queryArg}`);
+          } else {
+            throw new Error("JSON file must be an array of strings.");
+          }
+        } else {
+          logger.warn(`Keywords JSON file not found at ${queryArg}. Using fallback keywords.`);
+          queryArgFallback();
+        }
+      } catch (err: any) {
+        logger.error(`Failed to load keywords from JSON: ${err.message}. Using fallback.`);
+        queryArgFallback();
+      }
+    } else if (queryArg.toLowerCase().endsWith(".csv")) {
+      try {
+        const resolvedPath = path.resolve(queryArg);
+        if (fs.existsSync(resolvedPath)) {
+          const fileData = fs.readFileSync(resolvedPath, "utf-8");
+          searchKeywords = fileData
+            .split(/[\n,\r]+/)
+            .map(k => k.trim())
+            .filter(Boolean);
+          logger.info(`Loaded ${searchKeywords.length} keywords from CSV file: ${queryArg}`);
+        } else {
+          logger.warn(`Keywords CSV file not found at ${queryArg}. Using fallback keywords.`);
+          queryArgFallback();
+        }
+      } catch (err: any) {
+        logger.error(`Failed to load keywords from CSV: ${err.message}. Using fallback.`);
+        queryArgFallback();
+      }
     } else {
       searchKeywords = [queryArg];
     }
@@ -338,6 +381,81 @@ export class FacebookCdpSource implements LeadSourceAdapter {
           dupCount: totalDuplicatesDetected
         });
         continue;
+      }
+
+      // Expand all "Phù hợp nhất" dropdowns to "Tất cả bình luận" and click all "Xem thêm bình luận" buttons
+      logger.info(`Expanding comments and replies under posts for "${keyword}"...`);
+      try {
+        await targetPage.evaluate(async () => {
+          const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+          
+          // Step A: Change "Phù hợp nhất" to "Tất cả bình luận"
+          try {
+            const dropdowns = Array.from(document.querySelectorAll('div[role="button"], span[role="button"]'));
+            for (const dd of dropdowns) {
+              const text = (dd.textContent || "").trim();
+              if (text.includes("Phù hợp nhất") || text.includes("Most relevant") || text.includes("Xem bình luận hàng đầu")) {
+                (dd as any).click();
+                await sleep(1000);
+                const menuItems = Array.from(document.querySelectorAll('div[role="menuitem"], div[role="button"], span, div'));
+                for (const item of menuItems) {
+                  const itemText = (item.textContent || "").trim();
+                  if (itemText.includes("Tất cả bình luận") || itemText.includes("All comments")) {
+                    (item as any).click();
+                    await sleep(1500);
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore
+          }
+
+          // Step B: Expand comments and replies recursively
+          const expandTexts = [
+            "xem thêm bình luận", 
+            "xem các bình luận trước", 
+            "xem bình luận trước", 
+            "xem phản hồi", 
+            "xem thêm phản hồi",
+            "xem câu trả lời",
+            "xem thêm phản hồi khác"
+          ];
+
+          for (let iter = 0; iter < 4; iter++) {
+            const buttons = Array.from(document.querySelectorAll('div[role="button"], span[role="button"], span, div, a'));
+            let clickedAny = false;
+
+            for (const btn of buttons) {
+              if (btn.children.length > 2) continue; // Match leaf elements
+              const rect = btn.getBoundingClientRect();
+              if (rect.width === 0 || rect.height === 0) continue;
+
+              const text = (btn.textContent || "").trim().toLowerCase();
+              const matches = expandTexts.some(term => {
+                if (term === "phản hồi") {
+                  return text.includes("phản hồi") && (text.includes("xem") || /\d+/.test(text));
+                }
+                return text.includes(term);
+              });
+
+              if (matches) {
+                try {
+                  (btn as any).click();
+                  clickedAny = true;
+                } catch (e) {
+                  // Ignore
+                }
+              }
+            }
+
+            if (!clickedAny) break;
+            await sleep(1500);
+          }
+        });
+      } catch (err: any) {
+        logger.warn(`Failed to expand comments under posts: ${err.message}`);
       }
 
       logger.info(`Extracting profile cards and post content for "${keyword}"...`);

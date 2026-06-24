@@ -3,32 +3,43 @@ import fs from 'fs';
 import path from 'path';
 
 // Cấu hình mặc định
-let searchQuery = 'spa tại Sơn Tây, Hà Nội';
-if (process.argv[2]) {
-    searchQuery = process.argv[2];
-    // Tự động định vị về Sơn Tây nếu câu truy vấn không chỉ định cụ thể
-    const lowerQuery = searchQuery.toLowerCase();
-    if (!lowerQuery.includes('sơn tây') && !lowerQuery.includes('ba vì') && !lowerQuery.includes('phúc thọ') && !lowerQuery.includes('thạch thất') && !lowerQuery.includes('quốc oai') && !lowerQuery.includes('đan phượng')) {
-        searchQuery = `${searchQuery} tại Sơn Tây, Hà Nội`;
-    } else if (!lowerQuery.includes('hà nội') && !lowerQuery.includes('tại')) {
-        searchQuery = `${searchQuery} tại Sơn Tây, Hà Nội`;
+let rawQueries = ['spa tại Sơn Tây, Hà Nội'];
+const arg = process.argv[2];
+
+if (arg) {
+    if (arg.endsWith('.json')) {
+        try {
+            const data = JSON.parse(fs.readFileSync(path.resolve(arg), 'utf-8'));
+            if (Array.isArray(data)) {
+                if (typeof data[0] === 'string') {
+                    rawQueries = data;
+                } else if (data[0] && Array.isArray(data[0].queries)) {
+                    // Định dạng config/categories.json
+                    rawQueries = data.reduce((acc, cat) => acc.concat(cat.queries), []);
+                }
+            }
+        } catch (e) {
+            console.error(`❌ Lỗi đọc file cấu hình từ khóa: ${e.message}`);
+        }
+    } else if (arg.includes(',')) {
+        rawQueries = arg.split(',').map(q => q.trim()).filter(Boolean);
+    } else {
+        rawQueries = [arg];
     }
 }
 
-const SEARCH_QUERY = searchQuery;
+// Định dạng lại các từ khóa để đảm bảo có vị trí Sơn Tây / khu vực lân cận
+const QUERIES = rawQueries.map(q => {
+    let query = q;
+    const lowerQuery = query.toLowerCase();
+    if (!lowerQuery.includes('sơn tây') && !lowerQuery.includes('ba vì') && !lowerQuery.includes('phúc thọ') && !lowerQuery.includes('thạch thất') && !lowerQuery.includes('quốc oai') && !lowerQuery.includes('đan phượng')) {
+        query = `${query} tại Sơn Tây, Hà Nội`;
+    } else if (!lowerQuery.includes('hà nội') && !lowerQuery.includes('tại')) {
+        query = `${query} tại Sơn Tây, Hà Nội`;
+    }
+    return query;
+});
 
-// Tự động chuẩn hóa tên file theo từ khóa tìm kiếm (Slugify tiếng Việt)
-const cleanFileName = SEARCH_QUERY
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Bỏ dấu tiếng Việt
-    .replace(/[đĐ]/g, 'd')
-    .replace(/[^a-z0-9]/g, '_') // Thay thế các ký tự đặc biệt/khoảng trắng bằng gạch dưới
-    .replace(/_+/g, '_') // Rút gọn các dấu gạch dưới liền kề
-    .trim()
-    .replace(/^_+|_+$/g, ''); // Bỏ gạch dưới ở đầu/cuối
-
-const OUTPUT_FILE = `leads_${cleanFileName}.csv`;
 const MAX_RESULTS = 100;      // Số lượng cửa hàng tối đa muốn lấy
 const BATCH_SIZE = 3;        // Số lượng tab chạy song song để tăng tốc cào (Parallel Scraping)
 
@@ -38,7 +49,20 @@ const sleep = (min = 1, max = 2.5) => {
     return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-async function main() {
+async function scrapeQuery(SEARCH_QUERY) {
+    // Tự động chuẩn hóa tên file theo từ khóa tìm kiếm (Slugify tiếng Việt)
+    const cleanFileName = SEARCH_QUERY
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Bỏ dấu tiếng Việt
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9]/g, '_') // Thay thế các ký tự đặc biệt/khoảng trắng bằng gạch dưới
+        .replace(/_+/g, '_') // Rút gọn các dấu gạch dưới liền kề
+        .trim()
+        .replace(/^_+|_+$/g, ''); // Bỏ gạch dưới ở đầu/cuối
+
+    const OUTPUT_FILE = `leads_${cleanFileName}.csv`;
+
     console.log(`\n🚀 Bắt đầu cào dữ liệu Google Maps với từ khóa: "${SEARCH_QUERY}"`);
     console.log(`💾 Kết quả sẽ được lưu vào file: ${OUTPUT_FILE}`);
     console.log(`⚡ Cấu hình chạy song song: ${BATCH_SIZE} tab cùng lúc.`);
@@ -408,6 +432,8 @@ async function autoScrollFeed(page, feedSelector, maxResults) {
         await new Promise((resolve) => {
             let totalHeight = 0;
             const distance = 300;
+            let lastScrollTop = -1;
+            let noChangeCount = 0;
             
             const timer = setInterval(() => {
                 const scrollHeight = feed.scrollHeight;
@@ -415,10 +441,25 @@ async function autoScrollFeed(page, feedSelector, maxResults) {
                 totalHeight += distance;
 
                 const itemsCount = document.querySelectorAll('a[href*="/maps/place/"]').length;
-                const text = document.body.innerText;
-                const endOfList = text.includes('Bạn đã đi đến cuối danh sách') || text.includes('Không tìm thấy kết quả nào khác') || text.includes("You've reached the end of the list");
+                const textLower = document.body.innerText.toLowerCase();
+                const endOfList = textLower.includes('đến cuối danh sách') || 
+                                  textLower.includes('xem hết danh sách') || 
+                                  textLower.includes('không tìm thấy kết quả') || 
+                                  textLower.includes('không có kết quả') ||
+                                  textLower.includes("reached the end") ||
+                                  textLower.includes("no more results");
 
-                if (endOfList || itemsCount >= maxRes || totalHeight >= scrollHeight * 10) {
+                // Kiểm tra xem vị trí cuộn có thực sự thay đổi không (nếu chạm đáy, scrollTop sẽ đứng yên)
+                const currentScrollTop = (feed === document.body) ? window.scrollY : feed.scrollTop;
+                if (currentScrollTop === lastScrollTop) {
+                    noChangeCount++;
+                } else {
+                    noChangeCount = 0;
+                    lastScrollTop = currentScrollTop;
+                }
+
+                // Nếu nhận dạng được text kết thúc, hoặc đủ số lượng, hoặc không cuộn được nữa trong 5 giây liên tục
+                if (endOfList || itemsCount >= maxRes || noChangeCount >= 5 || totalHeight >= scrollHeight * 10) {
                     clearInterval(timer);
                     resolve();
                 }
@@ -492,5 +533,25 @@ function escapeCSVField(val) {
     return `"${str}"`;
 }
 
-// Thực thi chương trình
+// Thực thi chương trình chính
+async function main() {
+    console.log(`🎯 Tổng cộng có ${QUERIES.length} từ khóa cần quét.`);
+    for (let i = 0; i < QUERIES.length; i++) {
+        const q = QUERIES[i];
+        console.log(`\n=======================================================`);
+        console.log(`[${i + 1}/${QUERIES.length}] Bắt đầu tiến trình cho: ${q}`);
+        console.log(`=======================================================`);
+        try {
+            await scrapeQuery(q);
+        } catch (err) {
+            console.error(`❌ Thất bại khi cào từ khóa "${q}":`, err);
+        }
+        if (i < QUERIES.length - 1) {
+            console.log(`💤 Nghỉ 5 giây trước khi chuyển sang từ khóa tiếp theo...`);
+            await sleep(5, 7);
+        }
+    }
+    console.log(`\n🎉 Hoàn thành quét tất cả các từ khóa trên Google Maps!`);
+}
+
 main();

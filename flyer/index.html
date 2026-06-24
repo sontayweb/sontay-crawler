@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thiết kế Tờ rơi Sơn Tây Web - Xuất PDF</title>
+  
+  <!-- Google Fonts: Be Vietnam Pro (Hỗ trợ tiếng Việt xuất sắc) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for beautiful icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- QRCode.js to generate sharp dynamic QR codes -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #0b2240;
+      --primary-gradient: linear-gradient(135deg, #07162c 0%, #15355e 100%);
+      --accent-color: #f39c12;
+      --accent-gradient: linear-gradient(135deg, #ff9f43 0%, #f39c12 100%);
+      --danger-color: #ff3838;
+      --text-dark: #2c3e50;
+      --text-light: #ffffff;
+      --bg-light: #f8f9fa;
+      --pricing-bg: #fffbf0;
+      --pricing-border: #f39c12;
+      
+      /* A4 dimensions in pixels at 96 DPI (approximate, for screen preview) */
+      --a4-width: 210mm;
+      --a4-height: 297mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      background-color: #2c3e50;
+      color: var(--text-dark);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* App Layout */
+    .app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Editor Control Panel (Left) */
+    .editor-panel {
+      width: 450px;
+      background-color: #1a252f;
+      color: #ecf0f1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #34495e;
+      z-index: 10;
+      transition: all 0.3s ease;
+      box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .editor-header {
+      padding: 20px;
+      background-color: #111a24;
+      border-bottom: 1px solid #2c3e50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .editor-header h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #3498db;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .editor-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .editor-footer {
+      padding: 15px 20px;
+      background-color: #111a24;
+      border-top: 1px solid #2c3e50;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #bdc3c7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      width: 100%;
+      background-color: #2c3e50;
+      border: 1px solid #34495e;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #3498db;
+      margin: 25px 0 15px 0;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #34495e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title:first-of-type {
+      margin-top: 0;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: #34495e;
+      color: #ecf0f1;
+    }
+
+    .btn-secondary:hover {
+      background-color: #4e6a85;
+    }
+
+    /* Preview Container (Right) */
+    .preview-container {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px;
+      background-color: #2c3e50;
+      position: relative;
+    }
+
+    /* A4 Page Layout */
+    .flyer-page {
+      width: var(--a4-width);
+      height: var(--a4-height);
+      background-color: #ffffff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      /* Fixed printing dimensions */
+      min-width: var(--a4-width);
+      max-width: var(--a4-width);
+      min-height: var(--a4-height);
+      max-height: var(--a4-height);
+    }
+
+    /* ----------------------------------------------------
+       FLYER CONTENT STYLES (Target of A4 Export)
+    ---------------------------------------------------- */
+    
+    /* Top Section (Dark Blue) */
+    .flyer-header {
+      background: var(--primary-gradient);
+      color: var(--text-light);
+      padding: 40px 45px 35px 45px;
+      text-align: center;
+      position: relative;
+      border-bottom: 5px solid var(--accent-color);
+    }
+
+    .flyer-subtitle-top {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #5dade2;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    .flyer-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      line-height: 1.35;
+      margin-bottom: 25px;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      word-wrap: break-word;
+    }
+
+    /* Pain Points (List) */
+    .pain-points {
+      text-align: left;
+      margin-bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .pain-point-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .pain-point-item i {
+      color: var(--danger-color);
+      font-size: 1.1rem;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .pain-point-bold {
+      font-weight: 700;
+      color: #ff7675;
+    }
+
+    /* CTA Button / Badge */
+    .cta-badge-container {
+      margin-top: 15px;
+    }
+
+    .cta-badge {
+      background: var(--accent-gradient);
+      color: #000;
+      font-weight: 800;
+      font-size: 1.15rem;
+      padding: 14px 25px;
+      border-radius: 12px;
+      display: inline-block;
+      width: 100%;
+      box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cta-subtext {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: #bdc3c7;
+      word-spacing: 1px;
+    }
+
+    /* Bottom Section (Light Gray/White) */
+    .flyer-body {
+      flex: 1;
+      padding: 40px 45px;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Bio Section */
+    .bio-section {
+      margin-bottom: 25px;
+    }
+
+    .bio-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .bio-indicator {
+      width: 5px;
+      height: 24px;
+      background-color: var(--accent-color);
+      border-radius: 2px;
+    }
+
+    .bio-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .bio-content {
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #34495e;
+      text-align: justify;
+    }
+
+    .bio-content strong {
+      color: #111;
+    }
+
+    /* Pricing Table / Alert Box */
+    .pricing-box {
+      background-color: var(--pricing-bg);
+      border: 2.5px dashed var(--pricing-border);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .pricing-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #7f8c8d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .pricing-label del {
+      color: #c0392b;
+      margin-right: 5px;
+    }
+
+    .pricing-main {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #d35400;
+      margin: 5px 0;
+    }
+
+    .pricing-main span {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #7f8c8d;
+    }
+
+    .pricing-note {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #27ae60;
+      margin-top: 4px;
+    }
+
+    /* Footer: Contact and QR */
+    .flyer-footer {
+      border-top: 1.5px solid #eaeded;
+      padding-top: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .contact-info {
+      flex: 1;
+      padding-right: 20px;
+    }
+
+    .contact-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+
+    .contact-item {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: #566573;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .contact-item i {
+      color: var(--accent-color);
+      width: 16px;
+    }
+
+    .contact-item strong {
+      color: #2c3e50;
+    }
+
+    .brand-website {
+      margin-top: 15px;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #e74c3c;
+      letter-spacing: 0.5px;
+    }
+
+    /* QR Code Box */
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qr-box {
+      width: 110px;
+      height: 110px;
+      border: 2px solid var(--primary-color);
+      border-radius: 8px;
+      padding: 6px;
+      background-color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .qr-box canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .qr-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      text-transform: uppercase;
+      text-align: center;
+      letter-spacing: 0.5px;
+      width: 110px;
+      line-height: 1.3;
+    }
+
+
+    /* ----------------------------------------------------
+       PRINT STYLES: CRITICAL FOR PERFECT PDF EXPORT
+    ---------------------------------------------------- */
+    @media print {
+      body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+      }
+
+      /* Hide editing UI completely */
+      .editor-panel {
+        display: none !important;
+      }
+
+      .preview-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: none !important;
+        overflow: visible !important;
+        display: block !important;
+      }
+
+      /* Reset app container to let the flyer-page be the root element printed */
+      .app-container {
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+      }
+
+      .flyer-page {
+        display: flex !important;
+        position: relative !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        page-break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      /* Remove browser headers and footers margins */
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- LEFT: EDITOR PANEL -->
+    <div class="editor-panel">
+      <div class="editor-header">
+        <h2><i class="fa-solid fa-file-pen"></i> BIÊN TẬP TỜ RƠI</h2>
+        <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="resetToDefaults()">
+          <i class="fa-solid fa-rotate-left"></i> Khôi phục
+        </button>
+      </div>
+      
+      <div class="editor-body">
+        
+        <!-- SECTION 1: HEADER & HEADINGS -->
+        <div class="section-title"><i class="fa-solid fa-heading"></i> Tiêu đề & Khẩu hiệu</div>
+        
+        <div class="form-group">
+          <label for="input-subtitle-top">Khương dòng phụ trên cùng</label>
+          <input type="text" id="input-subtitle-top" class="form-control" oninput="updatePreview()">
+        </div>
+        
+        <div class="form-group">
+          <label for="input-title">Tiêu đề chính (Bùng nổ doanh thu)</label>
+          <textarea id="input-title" class="form-control" oninput="updatePreview()"></textarea>
+        </div>
+
+        <!-- SECTION 2: PAIN POINTS -->
+        <div class="section-title"><i class="fa-solid fa-triangle-exclamation"></i> Các Vấn Đề Của Khách Hàng</div>
+        
+        <div class="form-group">
+          <label>Vấn đề 1 (Đỏ/Bôi đậm - Nội dung thường)</label>
+          <div class="input-row">
+            <input type="text" id="input-pt1-bold" class="form-control" placeholder="Bôi đậm..." oninput="updatePreview()">
+            <input type="text" id="input-pt1-text" class="form-control" placeholder="Mô tả..." oninput="updatePreview()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Vấn đề 2 (Đỏ/Bôi đậm - Nội dung thường)</label>
+          <div class="input-row">
+            <input type="text" id="input-pt2-bold" class="form-control" placeholder="Bôi đậm..." oninput="updatePreview()">
+            <input type="text" id="input-pt2-text" class="form-control" placeholder="Mô tả..." oninput="updatePreview()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Vấn đề 3 (Đỏ/Bôi đậm - Nội dung thường)</label>
+          <div class="input-row">
+            <input type="text" id="input-pt3-bold" class="form-control" placeholder="Bôi đậm..." oninput="updatePreview()">
+            <input type="text" id="input-pt3-text" class="form-control" placeholder="Mô tả..." oninput="updatePreview()">
+          </div>
+        </div>
+
+        <!-- SECTION 3: CTA BUTTON -->
+        <div class="section-title"><i class="fa-solid fa-rocket"></i> Nút Kêu Gọi Hành Động</div>
+        
+        <div class="form-group">
+          <label for="input-cta-btn">Nội dung nút lớn</label>
+          <input type="text" id="input-cta-btn" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-cta-sub">Dòng tính năng nhỏ dưới nút</label>
+          <input type="text" id="input-cta-sub" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <!-- SECTION 4: BIO (BẢO CHỨNG) -->
+        <div class="section-title"><i class="fa-solid fa-user-shield"></i> Phần Bảo Chứng Kỹ Sư</div>
+        
+        <div class="form-group">
+          <label for="input-bio-title">Tiêu đề bảo chứng</label>
+          <input type="text" id="input-bio-title" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-bio-text">Nội dung giới thiệu (Có thể dùng HTML/strong)</label>
+          <textarea id="input-bio-text" class="form-control" style="min-height: 120px;" oninput="updatePreview()"></textarea>
+        </div>
+
+        <!-- SECTION 5: PRICING -->
+        <div class="section-title"><i class="fa-solid fa-tags"></i> Giá Cả & Ưu Đãi</div>
+        
+        <div class="form-group">
+          <label for="input-price-old">Mức giá gốc (Hiện gạch ngang)</label>
+          <input type="text" id="input-price-old" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-price-new">Giá ưu đãi (Hiện to rõ)</label>
+          <input type="text" id="input-price-new" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-price-note">Ghi chú ưu đãi dưới giá</label>
+          <input type="text" id="input-price-note" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <!-- SECTION 6: FOOTER & QR CODE -->
+        <div class="section-title"><i class="fa-solid fa-qrcode"></i> Liên Hệ & Mã QR</div>
+        
+        <div class="form-group">
+          <label for="input-contact-title">Tiêu đề liên hệ</label>
+          <input type="text" id="input-contact-title" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-phone">Số điện thoại liên hệ (Zalo)</label>
+          <input type="text" id="input-phone" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-website">Địa chỉ trang web (Màu đỏ to)</label>
+          <input type="text" id="input-website" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-qr-link">Đường dẫn quét mã QR (Ví dụ link Zalo/Web)</label>
+          <input type="text" id="input-qr-link" class="form-control" oninput="updatePreview()">
+        </div>
+
+        <div class="form-group">
+          <label for="input-qr-label">Chữ chú thích dưới QR</label>
+          <input type="text" id="input-qr-label" class="form-control" oninput="updatePreview()">
+        </div>
+
+      </div>
+
+      <div class="editor-footer">
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fa-solid fa-file-pdf"></i> Xuất Tờ Rơi (PDF / In)
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: PREVIEW PANEL -->
+    <div class="preview-container">
+      
+      <!-- A4 Page representation -->
+      <div class="flyer-page" id="printable-flyer">
+        
+        <!-- Flyer Top Area -->
+        <div class="flyer-header">
+          <div class="flyer-subtitle-top" id="view-subtitle-top">Nền tảng tự động hóa đa ngành toàn diện</div>
+          <h1 class="flyer-title" id="view-title">Giải pháp tự động hóa - X2 doanh thu<br>cho mọi cửa hàng tại Sơn Tây</h1>
+          
+          <div class="pain-points">
+            <div class="pain-point-item">
+              <i class="fa-solid fa-circle-xmark"></i>
+              <div>
+                <span class="pain-point-bold" id="view-pt1-bold">Mất khách vì rep chậm:</span>
+                <span id="view-pt1-text">Bận khách, rep muộn 10p là họ đi nơi khác.</span>
+              </div>
+            </div>
+            <div class="pain-point-item">
+              <i class="fa-solid fa-circle-xmark"></i>
+              <div>
+                <span class="pain-point-bold" id="view-pt2-bold">Trôi bài viết:</span>
+                <span id="view-pt2-text">Đăng bài Facebook/Zalo bị trôi mất, khách tìm bảng giá khó.</span>
+              </div>
+            </div>
+            <div class="pain-point-item">
+              <i class="fa-solid fa-circle-xmark"></i>
+              <div>
+                <span class="pain-point-bold" id="view-pt3-bold">Ẩn trên Google:</span>
+                <span id="view-pt3-text">Tìm kiếm quanh Sơn Tây không thấy Maps, mất khách vãng lai.</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="cta-badge-container">
+            <div class="cta-badge" id="view-cta-btn">🚀 SƠN TÂY WEB — TỰ ĐỘNG HÓA 100% CHO MỌI NGÀNH NGHỀ</div>
+            <div class="cta-subtext" id="view-cta-sub">Web Tự Viết Bài (AI) • Trực Khách 24/7 • Đặt Lịch Tự Động • Đo Lường Cuộc Gọi</div>
+          </div>
+        </div>
+        
+        <!-- Flyer Bottom Area -->
+        <div class="flyer-body">
+          
+          <!-- Bio section -->
+          <div class="bio-section">
+            <div class="bio-title-wrapper">
+              <div class="bio-indicator"></div>
+              <h2 class="bio-title" id="view-bio-title">Bảo chứng từ kỹ sư đồng hương</h2>
+            </div>
+            <div class="bio-content" id="view-bio-text">
+              Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Hợp Như - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.
+            </div>
+          </div>
+          
+          <!-- Pricing Section -->
+          <div class="pricing-box">
+            <div class="pricing-label" id="view-pricing-label">
+              Giá thuê doanh nghiệp: <del id="view-price-old">3 Triệu/Năm</del> — Trợ giá đồng hương:
+            </div>
+            <div class="pricing-main" id="view-price-new">99.000đ <span>/ tháng</span></div>
+            <div class="pricing-note" id="view-price-note">(Gói năm 1TR/trọn gói)</div>
+          </div>
+          
+          <!-- Footer section: contact and QR -->
+          <div class="flyer-footer">
+            <div class="contact-info">
+              <div class="contact-title" id="view-contact-title">Quét QR nhận ngay bản Web Demo riêng:</div>
+              <div class="contact-item">
+                <i class="fa-solid fa-comment-dots"></i>
+                <span>Zalo: <strong id="view-phone">0379.866.596</strong> (Hỗ trợ giới hạn đúng 20 cửa hàng đầu tiên)</span>
+              </div>
+              <div class="brand-website" id="view-website">sontayweb.vn</div>
+            </div>
+            
+            <div class="qr-container">
+              <div class="qr-box">
+                <canvas id="qr-canvas"></canvas>
+              </div>
+              <div class="qr-label" id="view-qr-label">Quét mã Zalo tại đây</div>
+            </div>
+          </div>
+          
+        </div>
+        
+      </div>
+      
+    </div>
+    
+  </div>
+
+  <script>
+    // Default Data
+    const defaultData = {
+      subtitleTop: "Nền tảng tự động hóa đa ngành toàn diện",
+      title: "Giải pháp tự động hóa - X2 doanh thu\ncho mọi cửa hàng tại Sơn Tây",
+      
+      pt1Bold: "Mất khách vì rep chậm: ",
+      pt1Text: "Bận khách, rep muộn 10p là họ đi nơi khác.",
+      
+      pt2Bold: "Trôi bài viết: ",
+      pt2Text: "Đăng bài Facebook/Zalo bị trôi mất, khách tìm bảng giá khó.",
+      
+      pt3Bold: "Ẩn trên Google: ",
+      pt3Text: "Tìm kiếm quanh Sơn Tây không thấy Maps, mất khách vãng lai.",
+      
+      ctaBtn: "🚀 SƠN TÂY WEB — TỰ ĐỘNG HÓA 100% CHO MỌI NGÀNH NGHỀ",
+      ctaSub: "Web Tự Viết Bài (AI) • Trực Khách 24/7 • Đặt Lịch Tự Động • Đo Lường Cuộc Gọi",
+      
+      bioTitle: "Bảo chứng từ kỹ sư đồng hương",
+      bioText: "Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Hợp Như - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.",
+      
+      priceOld: "3 Triệu/Năm",
+      priceNew: "99.000đ / tháng", // will render nicely
+      priceNote: "(Gói năm 1TR/trọn gói)",
+      
+      contactTitle: "Quét QR nhận ngay bản Web Demo riêng:",
+      phone: "0379.866.596",
+      website: "sontayweb.vn",
+      qrLink: "https://zalo.me/0379866596",
+      qrLabel: "Quét mã Zalo\ntại đây"
+    };
+
+    // Load defaults to Form
+    function loadFormValues(data) {
+      document.getElementById('input-subtitle-top').value = data.subtitleTop;
+      document.getElementById('input-title').value = data.title;
+      
+      document.getElementById('input-pt1-bold').value = data.pt1Bold;
+      document.getElementById('input-pt1-text').value = data.pt1Text;
+      
+      document.getElementById('input-pt2-bold').value = data.pt2Bold;
+      document.getElementById('input-pt2-text').value = data.pt2Text;
+      
+      document.getElementById('input-pt3-bold').value = data.pt3Bold;
+      document.getElementById('input-pt3-text').value = data.pt3Text;
+      
+      document.getElementById('input-cta-btn').value = data.ctaBtn;
+      document.getElementById('input-cta-sub').value = data.ctaSub;
+      
+      document.getElementById('input-bio-title').value = data.bioTitle;
+      document.getElementById('input-bio-text').value = data.bioText;
+      
+      document.getElementById('input-price-old').value = data.priceOld;
+      document.getElementById('input-price-new').value = data.priceNew;
+      document.getElementById('input-price-note').value = data.priceNote;
+      
+      document.getElementById('input-contact-title').value = data.contactTitle;
+      document.getElementById('input-phone').value = data.phone;
+      document.getElementById('input-website').value = data.website;
+      document.getElementById('input-qr-link').value = data.qrLink;
+      document.getElementById('input-qr-label').value = data.qrLabel;
+    }
+
+    // Generate QR Code dynamically
+    let qrCanvas = document.getElementById('qr-canvas');
+    function generateQR(text) {
+      QRCode.toCanvas(qrCanvas, text || "https://sontayweb.vn", {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#0b2240',
+          light: '#ffffff'
+        }
+      }, function (error) {
+        if (error) console.error(error);
+      });
+    }
+
+    // Update A4 Preview Elements
+    function updatePreview() {
+      // Subtitle top
+      document.getElementById('view-subtitle-top').innerText = document.getElementById('input-subtitle-top').value;
+      
+      // Title
+      document.getElementById('view-title').innerHTML = document.getElementById('input-title').value.replace(/\n/g, '<br>');
+      
+      // Pain points
+      document.getElementById('view-pt1-bold').innerText = document.getElementById('input-pt1-bold').value;
+      document.getElementById('view-pt1-text').innerText = document.getElementById('input-pt1-text').value;
+      
+      document.getElementById('view-pt2-bold').innerText = document.getElementById('input-pt2-bold').value;
+      document.getElementById('view-pt2-text').innerText = document.getElementById('input-pt2-text').value;
+      
+      document.getElementById('view-pt3-bold').innerText = document.getElementById('input-pt3-bold').value;
+      document.getElementById('view-pt3-text').innerText = document.getElementById('input-pt3-text').value;
+      
+      // CTA
+      document.getElementById('view-cta-btn').innerText = document.getElementById('input-cta-btn').value;
+      document.getElementById('view-cta-sub').innerText = document.getElementById('input-cta-sub').value;
+      
+      // Bio
+      document.getElementById('view-bio-title').innerText = document.getElementById('input-bio-title').value;
+      document.getElementById('view-bio-text').innerHTML = document.getElementById('input-bio-text').value;
+      
+      // Pricing
+      document.getElementById('view-price-old').innerText = document.getElementById('input-price-old').value;
+      
+      // Parse pricing for custom format
+      let priceNewVal = document.getElementById('input-price-new').value;
+      if (priceNewVal.includes('/')) {
+        let parts = priceNewVal.split('/');
+        document.getElementById('view-price-new').innerHTML = parts[0].trim() + ` <span>/ ${parts[1].trim()}</span>`;
+      } else {
+        document.getElementById('view-price-new').innerText = priceNewVal;
+      }
+      
+      document.getElementById('view-price-note').innerText = document.getElementById('input-price-note').value;
+      
+      // Footer
+      document.getElementById('view-contact-title').innerText = document.getElementById('input-contact-title').value;
+      document.getElementById('view-phone').innerText = document.getElementById('input-phone').value;
+      document.getElementById('view-website').innerText = document.getElementById('input-website').value;
+      
+      // QR Code and Label
+      generateQR(document.getElementById('input-qr-link').value);
+      document.getElementById('view-qr-label').innerHTML = document.getElementById('input-qr-label').value.replace(/\n/g, '<br>');
+    }
+
+    function resetToDefaults() {
+      if (confirm("Bạn có chắc muốn khôi phục thiết kế ban đầu không?")) {
+        loadFormValues(defaultData);
+        updatePreview();
+      }
+    }
+
+    // Initialize Page
+    window.onload = function() {
+      loadFormValues(defaultData);
+      updatePreview();
+    };
+  </script>
+</body>
+</html>

@@ -143,7 +143,7 @@ export class FacebookCdpSource implements LeadSourceAdapter {
 
     if (!targetPage) {
       logger.warn("No active Facebook or 'Sơn Tây' tab found in open Chrome windows.");
-      await browser.disconnect();
+      await browser.close();
       return;
     }
 
@@ -153,7 +153,7 @@ export class FacebookCdpSource implements LeadSourceAdapter {
     if (!groupMatch) {
       logger.error("Active page is not a Facebook Group page.");
       logger.error("Please open your Facebook Group first, e.g.: https://www.facebook.com/groups/303274231518590");
-      await browser.disconnect();
+      await browser.close();
       return;
     }
     const groupId = groupMatch[1];
@@ -693,8 +693,8 @@ export class FacebookCdpSource implements LeadSourceAdapter {
       });
     }
 
-    // Disconnect CDP session (leaves browser open)
-    await browser.disconnect();
+    // Close CDP session
+    await browser.close();
 
     // Print a gorgeous scraping summary table
     logger.info("\n=======================================================");

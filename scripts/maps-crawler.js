@@ -16,7 +16,19 @@ if (process.argv[2]) {
 }
 
 const SEARCH_QUERY = searchQuery;
-const OUTPUT_FILE = 'danh_sach_maps_son_tay.csv';
+
+// Tự động chuẩn hóa tên file theo từ khóa tìm kiếm (Slugify tiếng Việt)
+const cleanFileName = SEARCH_QUERY
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Bỏ dấu tiếng Việt
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9]/g, '_') // Thay thế các ký tự đặc biệt/khoảng trắng bằng gạch dưới
+    .replace(/_+/g, '_') // Rút gọn các dấu gạch dưới liền kề
+    .trim()
+    .replace(/^_+|_+$/g, ''); // Bỏ gạch dưới ở đầu/cuối
+
+const OUTPUT_FILE = `leads_${cleanFileName}.csv`;
 const MAX_RESULTS = 100;      // Số lượng cửa hàng tối đa muốn lấy
 const BATCH_SIZE = 3;        // Số lượng tab chạy song song để tăng tốc cào (Parallel Scraping)
 
@@ -28,21 +40,31 @@ const sleep = (min = 1, max = 2.5) => {
 
 async function main() {
     console.log(`\n🚀 Bắt đầu cào dữ liệu Google Maps với từ khóa: "${SEARCH_QUERY}"`);
+    console.log(`💾 Kết quả sẽ được lưu vào file: ${OUTPUT_FILE}`);
     console.log(`⚡ Cấu hình chạy song song: ${BATCH_SIZE} tab cùng lúc.`);
     
-    // 1. Khởi tạo trình duyệt trực quan Local
+    // 1. Khởi tạo trình duyệt trực quan Local (Bật chế độ Stealth cơ bản)
     const browser = await puppeteer.launch({
         headless: false,
         defaultViewport: null,
         args: [
             '--start-maximized',
             '--no-sandbox',
-            '--disable-setuid-sandbox'
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled' // Che giấu thuộc tính tự động hóa
         ]
     });
 
     // Mở trang chính để tìm kiếm danh sách
     const mainPage = await browser.newPage();
+    
+    // Thiết lập User-Agent thực tế và vô hiệu hóa biến navigator.webdriver
+    await mainPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await mainPage.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+    });
 
     try {
         const encodedQuery = encodeURIComponent(SEARCH_QUERY);
@@ -143,6 +165,14 @@ async function main() {
             const promises = batch.map(async (target, index) => {
                 const currentIndex = i + index + 1;
                 const tab = await browser.newPage();
+                
+                // Thiết lập User-Agent thực tế và vô hiệu hóa biến navigator.webdriver để tránh bị bot-detection
+                await tab.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                await tab.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                });
                 
                 // Chặn tải hình ảnh, font chữ để tối ưu tốc độ cào
                 await tab.setRequestInterception(true);
@@ -269,11 +299,15 @@ async function main() {
 
                     // Lọc địa chỉ xem có thuộc khu vực Sơn Tây & vùng lân cận không
                     const ALLOWED_AREAS = ['sơn tây', 'ba vì', 'phúc thọ', 'thạch thất', 'quốc oai', 'đan phượng'];
+                    // Loại bỏ các quận nội thành Hà Nội để tránh nhầm các tên đường trùng (ví dụ: Phố Sơn Tây - Ba Đình)
+                    const EXCLUDED_DISTRICTS = ['ba đình', 'hoàn kiếm', 'tây hồ', 'cầu giấy', 'đống đa', 'hai bà trưng', 'thanh xuân', 'hoàng mai', 'long biên', 'hà đông', 'nam từ liêm', 'bắc từ liêm'];
+                    
                     const addrLower = details.address.toLowerCase();
                     const isTargetArea = ALLOWED_AREAS.some(area => addrLower.includes(area));
+                    const isCentralDistrict = EXCLUDED_DISTRICTS.some(dist => addrLower.includes(dist));
 
-                    if (!isTargetArea) {
-                        console.log(`   [${currentIndex}] ⚠️ Bỏ qua: "${details.name}" (Địa chỉ không thuộc Sơn Tây/lân cận: ${details.address || 'Trống'})`);
+                    if (!isTargetArea || isCentralDistrict) {
+                        console.log(`   [${currentIndex}] ⚠️ Bỏ qua: "${details.name}" (Địa chỉ không thuộc Sơn Tây hoặc ở nội thành: ${details.address || 'Trống'})`);
                     } else {
                         // Tính toán điểm tiềm năng (Scoring System)
                         const scoreData = calculateLeadScore(details);
@@ -435,9 +469,18 @@ async function exportToCSV(data, fileName) {
     try {
         const filePath = path.join(process.cwd(), fileName);
         fs.writeFileSync(filePath, bom + csvContent, 'utf-8');
-        console.log(`🎉 Xuất file thành công! Bạn có thể click đúp mở trực tiếp file "${fileName}" bằng Microsoft Excel tại Việt Nam.`);
+        console.log(`🎉 Xuất file CSV thành công tại: "${fileName}"`);
+        
+        // Đồng thời xuất file lưu trữ dạng JSONL để dễ dàng deduplicate hoặc import DB sau này
+        const jsonlFileName = fileName.replace('.csv', '.jsonl');
+        const jsonlPath = path.join(process.cwd(), jsonlFileName);
+        const jsonlContent = data.map(item => JSON.stringify(item)).join('\n');
+        fs.writeFileSync(jsonlPath, jsonlContent, 'utf-8');
+        console.log(`🎉 Xuất file JSONL lưu trữ thành công tại: "${jsonlFileName}"`);
+        
+        console.log(`💡 Bạn có thể click đúp mở trực tiếp file CSV bằng Microsoft Excel.`);
     } catch (error) {
-        console.error('❌ Lỗi khi ghi file CSV:', error);
+        console.error('❌ Lỗi khi ghi file kết quả:', error);
     }
 }
 

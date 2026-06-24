@@ -143,7 +143,7 @@ export class FacebookCdpSource implements LeadSourceAdapter {
 
     if (!targetPage) {
       logger.warn("No active Facebook or 'Sơn Tây' tab found in open Chrome windows.");
-      await browser.close();
+      await browser.disconnect();
       return;
     }
 
@@ -153,7 +153,7 @@ export class FacebookCdpSource implements LeadSourceAdapter {
     if (!groupMatch) {
       logger.error("Active page is not a Facebook Group page.");
       logger.error("Please open your Facebook Group first, e.g.: https://www.facebook.com/groups/303274231518590");
-      await browser.close();
+      await browser.disconnect();
       return;
     }
     const groupId = groupMatch[1];
@@ -289,13 +289,17 @@ export class FacebookCdpSource implements LeadSourceAdapter {
 
       for (let i = 1; i <= 50; i++) {
         try {
-          // 1. Scroll to the bottom of the page
-          await targetPage.evaluate(() => {
-            window.scrollTo(0, document.body.scrollHeight);
+          // 1. Scroll down incrementally to trigger Facebook lazy loading naturally
+          await targetPage.evaluate(async () => {
+            const distance = 400;
+            for (let s = 0; s < 5; s++) {
+              window.scrollBy(0, distance);
+              await new Promise(r => setTimeout(r, 150));
+            }
           });
 
           // 2. Wait for content to load and render
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
 
           // 3. Detect end-of-results indicator (checking specific leaf elements to be fast and accurate)
           const hasReachedEnd = await targetPage.evaluate(() => {
@@ -386,74 +390,71 @@ export class FacebookCdpSource implements LeadSourceAdapter {
       // Expand all "Phù hợp nhất" dropdowns to "Tất cả bình luận" and click all "Xem thêm bình luận" buttons
       logger.info(`Expanding comments and replies under posts for "${keyword}"...`);
       try {
-        await targetPage.evaluate(async () => {
-          const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-          
-          // Step A: Change "Phù hợp nhất" to "Tất cả bình luận"
-          try {
-            const dropdowns = Array.from(document.querySelectorAll('div[role="button"], span[role="button"]'));
-            for (const dd of dropdowns) {
-              const text = (dd.textContent || "").trim();
-              if (text.includes("Phù hợp nhất") || text.includes("Most relevant") || text.includes("Xem bình luận hàng đầu")) {
-                (dd as any).click();
-                await sleep(1000);
-                const menuItems = Array.from(document.querySelectorAll('div[role="menuitem"], div[role="button"], span, div'));
-                for (const item of menuItems) {
-                  const itemText = (item.textContent || "").trim();
-                  if (itemText.includes("Tất cả bình luận") || itemText.includes("All comments")) {
-                    (item as any).click();
-                    await sleep(1500);
+        // Step A: Thay đổi "Phù hợp nhất" / "Most relevant" thành "Tất cả bình luận" để hiện đầy đủ data
+        const dropdownTexts = ["Phù hợp nhất", "Most relevant", "Xem bình luận hàng đầu", "Top comments"];
+        for (const text of dropdownTexts) {
+          const dropdowns = targetPage.locator(`div[role="button"]:has-text("${text}"), span[role="button"]:has-text("${text}")`);
+          const count = await dropdowns.count();
+          for (let i = 0; i < count; i++) {
+            const dd = dropdowns.nth(i);
+            try {
+              if (await dd.isVisible()) {
+                await dd.scrollIntoViewIfNeeded();
+                await dd.click({ timeout: 2000 });
+                await targetPage.waitForTimeout(1000);
+
+                // Tìm kiếm và click "Tất cả bình luận" / "All comments"
+                const menuItems = targetPage.locator('div[role="menuitem"]:has-text("Tất cả bình luận"), div[role="menuitem"]:has-text("All comments"), span:has-text("Tất cả bình luận"), span:has-text("All comments")');
+                const itemsCount = await menuItems.count();
+                for (let j = 0; j < itemsCount; j++) {
+                  const item = menuItems.nth(j);
+                  if (await item.isVisible()) {
+                    await item.click({ timeout: 2000 });
+                    await targetPage.waitForTimeout(1000);
                     break;
                   }
                 }
               }
+            } catch (clickErr) {
+              // Bỏ qua lỗi click đơn lẻ của từng phần tử
             }
-          } catch (e) {
-            // Ignore
           }
+        }
 
-          // Step B: Expand comments and replies recursively
-          const expandTexts = [
-            "xem thêm bình luận", 
-            "xem các bình luận trước", 
-            "xem bình luận trước", 
-            "xem phản hồi", 
-            "xem thêm phản hồi",
-            "xem câu trả lời",
-            "xem thêm phản hồi khác"
-          ];
+        // Step B: Click mở rộng phản hồi và bình luận ẩn của bài đăng bằng locator Native
+        const expandTexts = [
+          "xem thêm bình luận", 
+          "xem các bình luận trước", 
+          "xem bình luận trước", 
+          "xem phản hồi", 
+          "xem thêm phản hồi",
+          "xem câu trả lời",
+          "xem thêm phản hồi khác",
+          "view replies",
+          "view more comments"
+        ];
 
-          for (let iter = 0; iter < 4; iter++) {
-            const buttons = Array.from(document.querySelectorAll('div[role="button"], span[role="button"], span, div, a'));
-            let clickedAny = false;
-
-            for (const btn of buttons) {
-              if (btn.children.length > 2) continue; // Match leaf elements
-              const rect = btn.getBoundingClientRect();
-              if (rect.width === 0 || rect.height === 0) continue;
-
-              const text = (btn.textContent || "").trim().toLowerCase();
-              const matches = expandTexts.some(term => {
-                if (term === "phản hồi") {
-                  return text.includes("phản hồi") && (text.includes("xem") || /\d+/.test(text));
-                }
-                return text.includes(term);
-              });
-
-              if (matches) {
-                try {
-                  (btn as any).click();
+        for (let iter = 0; iter < 3; iter++) {
+          let clickedAny = false;
+          for (const text of expandTexts) {
+            const buttons = targetPage.locator(`div[role="button"]:has-text("${text}"), span[role="button"]:has-text("${text}"), a:has-text("${text}")`);
+            const count = await buttons.count();
+            for (let i = 0; i < count; i++) {
+              const btn = buttons.nth(i);
+              try {
+                if (await btn.isVisible()) {
+                  await btn.scrollIntoViewIfNeeded();
+                  await btn.click({ timeout: 2000 });
                   clickedAny = true;
-                } catch (e) {
-                  // Ignore
+                  await targetPage.waitForTimeout(1000);
                 }
+              } catch (e) {
+                // Bỏ qua
               }
             }
-
-            if (!clickedAny) break;
-            await sleep(1500);
           }
-        });
+          if (!clickedAny) break;
+        }
       } catch (err: any) {
         logger.warn(`Failed to expand comments under posts: ${err.message}`);
       }
@@ -692,8 +693,8 @@ export class FacebookCdpSource implements LeadSourceAdapter {
       });
     }
 
-    // Close CDP session
-    await browser.close();
+    // Disconnect CDP session (leaves browser open)
+    await browser.disconnect();
 
     // Print a gorgeous scraping summary table
     logger.info("\n=======================================================");

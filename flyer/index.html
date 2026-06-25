@@ -407,6 +407,21 @@
       margin-top: 4px;
     }
 
+    .pricing-guarantee {
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: #c0392b;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-top: 1.5px dashed rgba(243, 156, 18, 0.3);
+      padding-top: 10px;
+    }
+
     /* Footer: Contact and QR */
     .flyer-footer {
       border-top: 1.5px solid #eaeded;
@@ -643,6 +658,11 @@
           <input type="text" id="input-price-note" class="form-control" oninput="updatePreview()">
         </div>
 
+        <div class="form-group">
+          <label for="input-price-guarantee">Dòng cam kết / Đảm bảo</label>
+          <input type="text" id="input-price-guarantee" class="form-control" oninput="updatePreview()">
+        </div>
+
         <!-- SECTION 6: FOOTER & QR CODE -->
         <div class="section-title"><i class="fa-solid fa-qrcode"></i> Liên Hệ & Mã QR</div>
         
@@ -731,7 +751,7 @@
               <h2 class="bio-title" id="view-bio-title">Bảo chứng từ kỹ sư đồng hương</h2>
             </div>
             <div class="bio-content" id="view-bio-text">
-              Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Hợp Như - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.
+              Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Quỳnh Như (Hợp Như cũ) - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.
             </div>
           </div>
           
@@ -742,6 +762,9 @@
             </div>
             <div class="pricing-main" id="view-price-new">99.000đ <span>/ tháng</span></div>
             <div class="pricing-note" id="view-price-note">(Gói năm 1TR/trọn gói)</div>
+            <div class="pricing-guarantee" id="view-pricing-guarantee">
+              🛡️ DÙNG THỬ 7 NGÀY MIỄN PHÍ — HÀI LÒNG MỚI THANH TOÁN
+            </div>
           </div>
           
           <!-- Footer section: contact and QR -->
@@ -757,7 +780,8 @@
             
             <div class="qr-container">
               <div class="qr-box">
-                <canvas id="qr-canvas"></canvas>
+                <img id="qr-image" src="ZaloQA.jpg" style="width: 100%; height: 100%; object-fit: contain; display: block;" onerror="this.style.display='none'; document.getElementById('qr-canvas').style.display='block';">
+                <canvas id="qr-canvas" style="display: none;"></canvas>
               </div>
               <div class="qr-label" id="view-qr-label">Quét mã Zalo tại đây</div>
             </div>
@@ -790,16 +814,17 @@
       ctaSub: "Web Tự Viết Bài (AI) • Trực Khách 24/7 • Đặt Lịch Tự Động • Đo Lường Cuộc Gọi",
       
       bioTitle: "Bảo chứng từ kỹ sư đồng hương",
-      bioText: "Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Hợp Như - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.",
+      bioText: "Em là <strong>Trương Hoàng Hiệp</strong> (con nhà <strong>Hiệu ảnh Quỳnh Như (Hợp Như cũ) - 151A Trung Sơn Trầm</strong>). Cựu SV ĐH FPT, Kỹ sư CNTT tại Sở Giao dịch Hàng hóa VN (MXV). Hệ thống Multi-tenant SaaS tự vận hành, tự sao lưu Drive hằng ngày. Anh/chị <strong>không cần biết công nghệ</strong>, hệ thống thông minh tự làm trọn gói cho mình.",
       
       priceOld: "3 Triệu/Năm",
       priceNew: "99.000đ / tháng", // will render nicely
       priceNote: "(Gói năm 1TR/trọn gói)",
+      priceGuarantee: "🛡️ DÙNG THỬ 7 NGÀY MIỄN PHÍ — HÀI LÒNG MỚI THANH TOÁN",
       
       contactTitle: "Quét QR nhận ngay bản Web Demo riêng:",
       phone: "0379.866.596",
       website: "sontayweb.vn",
-      qrLink: "https://zalo.me/0379866596",
+      qrLink: "https://zaloapp.com/qr/p/9vtve9nqtkp6",
       qrLabel: "Quét mã Zalo\ntại đây"
     };
 
@@ -826,6 +851,7 @@
       document.getElementById('input-price-old').value = data.priceOld;
       document.getElementById('input-price-new').value = data.priceNew;
       document.getElementById('input-price-note').value = data.priceNote;
+      document.getElementById('input-price-guarantee').value = data.priceGuarantee;
       
       document.getElementById('input-contact-title').value = data.contactTitle;
       document.getElementById('input-phone').value = data.phone;
@@ -888,6 +914,7 @@
       }
       
       document.getElementById('view-price-note').innerText = document.getElementById('input-price-note').value;
+      document.getElementById('view-pricing-guarantee').innerHTML = document.getElementById('input-price-guarantee').value;
       
       // Footer
       document.getElementById('view-contact-title').innerText = document.getElementById('input-contact-title').value;
@@ -895,7 +922,22 @@
       document.getElementById('view-website').innerText = document.getElementById('input-website').value;
       
       // QR Code and Label
-      generateQR(document.getElementById('input-qr-link').value);
+      const qrLinkInput = document.getElementById('input-qr-link').value;
+      const qrImg = document.getElementById('qr-image');
+      const canvas = document.getElementById('qr-canvas');
+      
+      generateQR(qrLinkInput);
+      
+      if (qrLinkInput !== "https://zaloapp.com/qr/p/9vtve9nqtkp6") {
+        if (qrImg) qrImg.style.display = 'none';
+        if (canvas) canvas.style.display = 'block';
+      } else {
+        if (qrImg) {
+          qrImg.style.display = 'block';
+          if (canvas) canvas.style.display = 'none';
+        }
+      }
+      
       document.getElementById('view-qr-label').innerHTML = document.getElementById('input-qr-label').value.replace(/\n/g, '<br>');
     }
 
